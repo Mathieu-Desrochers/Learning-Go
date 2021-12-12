@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"unicode/utf8"
 )
 
@@ -37,18 +36,8 @@ func main() {
 	fmt.Printf("originalArray: %v\n", originalArray)
 	fmt.Printf("copiedArray: %v\n", copiedArray)
 
-	// slices are fat pointers to an array
-	// they keep track of its length and capacity
-	//
-	//   struct {
-	//     void* ptr;
-	//     size_t len;
-	//     size_t cap;
-	//   };
-	//
-	// since slices are passed by value
-	// functions changing any of these fields
-	// must return an updated copy
+	// slices are pointers to an array
+	// they keep track of it's length and capacity
 	var slice []int
 	fmt.Printf("a slice of %v elements and a capacity for %v\n", len(slice), cap(slice))
 
@@ -57,7 +46,9 @@ func main() {
 	_ = []int{1, 2, 3, 4}
 	_ = []int{2: 10, 4: 20}
 
-	// adding values
+	// appending values
+	// can reallocate the array to a different size and location
+	// must be recaptured
 	slice = append(slice, 1)
 	slice = append(slice, 2)
 	slice = append(slice, 3)
@@ -151,21 +142,18 @@ func main() {
 		LastName   string
 	}
 
-	// structure variables
-	var employee Employee
-	var point struct{ X, Y int }
-
 	// structure literals
 	_ = Employee{1, "Alice", "Alisson"}
-	_ = Employee{FirstName: "Bob"}
+	_ = Employee{FirstName: "Alice"}
 
-	// allocation
+	// structure allocations
 	_ = new(Employee)
 	_ = &Employee{2, "Bob", "Bobson"}
+	_ = &Employee{FirstName: "Bob"}
 
 	// accessing fields
-	employee.FirstName = "Alice"
-	point.X = 100
+	var employee Employee = Employee{FirstName: "A"}
+	fmt.Printf("employee first name: %v\n", employee.FirstName)
 
 	// same notation with pointers
 	var employeePointer *Employee = &employee
@@ -183,6 +171,13 @@ func main() {
 		Manager   *Employee
 		Employees []*Employee
 	}
+
+	// anonymous structures
+	var point struct{ X, Y int }
+	point.X = 100
+
+	// anonymous structure literals
+	_ = struct{ X, Y, Z int }{X: 1, Y: 2, Z: 3}
 
 	// something like an enum
 	type Flavor int32
@@ -239,18 +234,6 @@ func errorWithContext(color string) error {
 	}
 	return nil
 }
-func errorLogging() {
-	err := errorWithContext("red")
-	if err != nil {
-		fmt.Println(err)
-	}
-}
-func errorCrashing() {
-	err := errorWithContext("red")
-	if err != nil {
-		log.Fatalf("ugh giving up: %v", err)
-	}
-}
 
 // declared errors
 var outOfPaint = errors.New("out of paint")
@@ -279,7 +262,7 @@ func later() {
 	_, _ = bareReturns()
 
 	// errors
-	errorLogging()
+	errorWithContext("red")
 	errorDeclared()
 
 	// functions as values
