@@ -365,7 +365,7 @@ func laterr() {
 	}
 
 	// members promotion
-	// proxies are injected to delegate the call
+	// proxies are injected to delegate the calls
 	fido := &Dog{Animal{4}, "Fido"}
 	fmt.Printf("fido legs count: %v\n", fido.Animal.LegsCount)
 	fmt.Printf("fido legs count: %v\n", fido.LegsCount)
@@ -393,4 +393,59 @@ func laterr() {
 	// with the receiver already bound
 	methodValue := animal.GrowLeg
 	methodValue()
+
+	laterrr()
+}
+
+// encapsulation
+// members starting with a lower cased letter
+// are only visible from their package
+type Cake struct {
+	hugeCaloriesCount int
+}
+
+// getters and setters
+func (cake *Cake) HugeCaloriesCount() int {
+	return cake.hugeCaloriesCount
+}
+func (cake *Cake) SetHugeCaloriesCount(value int) {
+	cake.hugeCaloriesCount = value
+}
+
+// interfaces
+type Quacker interface {
+	Quack(times int)
+}
+
+// uses duck typing
+// you have the methods you qualify
+type Duck struct{}
+
+func (duck *Duck) Quack(times int) {
+	for i := 0; i < times; i++ {
+		fmt.Printf("quack")
+	}
+}
+
+func laterrr() {
+
+	// visible from this package
+	var hugeCake = &Cake{100000}
+	_ = hugeCake.hugeCaloriesCount
+
+	// any structure with a Quack method can be passed
+	doTheQuacking := func(quacker Quacker, times int) {
+		quacker.Quack(times)
+	}
+	duck := &Duck{}
+	doTheQuacking(duck, 3)
+
+	// the empty interface
+	// everyone can play
+	var empty interface{}
+	empty = false
+	empty = 10
+	empty = duck
+	_ = empty
+
 }
