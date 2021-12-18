@@ -312,7 +312,7 @@ func later() {
 		fmt.Println("enter")
 		defer fmt.Println("deferred")
 		{
-			defer fmt.Println("does not work at block level")
+			defer fmt.Println("not when a block exits")
 		}
 		fmt.Println("exit")
 	}
@@ -358,7 +358,39 @@ func laterr() {
 	animal := &Animal{4}
 	fmt.Println(animal.CanQuack())
 
-	animal.GrowLeg()
-	fmt.Println(animal.LegsCount)
+	// struct composition
+	type Dog struct {
+		Animal
+		GoodBoyName string
+	}
 
+	// members promotion
+	// proxies are injected to delegate the call
+	fido := &Dog{Animal{4}, "Fido"}
+	fmt.Printf("fido legs count: %v\n", fido.Animal.LegsCount)
+	fmt.Printf("fido legs count: %v\n", fido.LegsCount)
+
+	// this is not inheritance
+	// the second call would not compile
+	animalFunction := func(_ Animal) {}
+	animalFunction(fido.Animal)
+	//animalFunction(fido)
+
+	// struct composition works with pointer types too
+	type Cat struct {
+		*Animal
+		BadBoyName string
+	}
+	tiger := &Cat{&Animal{4}, "Tiger"}
+	tiger.GrowLeg()
+
+	// method expressions are functions
+	// with the receiver as first parameter
+	methodExpression := (*Animal).GrowLeg
+	methodExpression(animal)
+
+	// method values are functions
+	// with the receiver already bound
+	methodValue := animal.GrowLeg
+	methodValue()
 }
