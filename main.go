@@ -55,7 +55,16 @@ func main() {
 	fmt.Printf("appended slice %v\n", slice)
 
 	// selecting values
-	fmt.Printf("selected slice %v\n", slice[1:])
+	fmt.Printf("selected slice %v\n", originalArray[1:])
+
+	// selected slices can get disconnected
+	// if their source is reallocated
+	sourceSlice := []int{1}
+	selectedSlice := sourceSlice[0:1]
+	sourceSlice = append(sourceSlice, 11)
+	sourceSlice[0] = 10
+	fmt.Printf("source slice %v\n", sourceSlice)
+	fmt.Printf("selected slice %v\n", selectedSlice)
 
 	// modifying values
 	slice[0] = 10
