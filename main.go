@@ -19,27 +19,17 @@ func main() {
 
 	// arrays have a fixed length
 	var array [2]int
-	fmt.Printf("an array of %v elements\n", len(array))
+	fmt.Printf("array of %v elements\n", len(array))
 
 	// array literals
 	_ = [3]int{1, 2, 3}
 	_ = [...]int{1, 2, 3, 4}
 	_ = [...]int{2: 10, 4: 20}
 
-	// arrays are compared by value
-	fmt.Printf("arrays a equal: %v\n", [...]int{1, 2} == [...]int{1, 2})
-
-	// and are passed by value
-	originalArray := [...]string{"a", "b", "c"}
-	copiedArray := originalArray
-	originalArray[0] = "x"
-	fmt.Printf("originalArray: %v\n", originalArray)
-	fmt.Printf("copiedArray: %v\n", copiedArray)
-
-	// slices are pointers to an array
-	// they keep track of it's length and capacity
+	// slices have an auto growing length
+	// they keep track of an array and its capacity
 	var slice []int
-	fmt.Printf("a slice of %v elements and a capacity for %v\n", len(slice), cap(slice))
+	fmt.Printf("slice of %v elements and a capacity for %v\n", len(slice), cap(slice))
 
 	// slice literals
 	_ = []int{}
@@ -47,7 +37,7 @@ func main() {
 	_ = []int{2: 10, 4: 20}
 
 	// appending values
-	// can reallocate the array to a different size and location
+	// can reallocate the array to a bigger location
 	// must be recaptured
 	slice = append(slice, 1)
 	slice = append(slice, 2)
@@ -55,16 +45,7 @@ func main() {
 	fmt.Printf("appended slice %v\n", slice)
 
 	// selecting values
-	fmt.Printf("selected slice %v\n", originalArray[1:])
-
-	// selected slices can get disconnected
-	// if their source is reallocated
-	sourceSlice := []int{1}
-	selectedSlice := sourceSlice[0:1]
-	sourceSlice = append(sourceSlice, 11)
-	sourceSlice[0] = 10
-	fmt.Printf("source slice %v\n", sourceSlice)
-	fmt.Printf("selected slice %v\n", selectedSlice)
+	fmt.Printf("selected values %v\n", array[1:])
 
 	// modifying values
 	slice[0] = 10
@@ -80,7 +61,19 @@ func main() {
 	// slices can be built with a
 	// predefined length and capacity
 	slice = make([]int, 5, 1000)
-	fmt.Printf("a slice of %v elements and a capacity for %v\n", len(slice), cap(slice))
+	fmt.Printf("slice of %v elements and a capacity for %v\n", len(slice), cap(slice))
+
+	// selected values should be considered read only
+	// changes in the source can be reflected
+	// unless the source gets reallocated
+	// probably make a copy
+	source := []int{1}
+	selectedValues := source[:]
+	source[0] = 2
+	fmt.Printf("selected values %v\n", selectedValues)
+	source = append(source, 0)
+	source[0] = 3
+	fmt.Printf("selected values %v\n", selectedValues)
 
 	// maps are hash tables
 	var nameById = make(map[int]string)
@@ -109,7 +102,7 @@ func main() {
 	delete(nameById, 300)
 
 	// strings are immutable sequences of bytes
-	greek := "Some greek: Τη γλώσσα μου έδωσαν"
+	greek := "some greek: Τη γλώσσα μου έδωσαν"
 
 	// the index operation returns a byte
 	fmt.Println(greek[0])
