@@ -45,7 +45,7 @@ func main() {
 	fmt.Printf("appended slice %v\n", slice)
 
 	// selecting values
-	fmt.Printf("selected values %v\n", array[1:])
+	fmt.Printf("selected slice %v\n", array[1:])
 
 	// modifying values
 	slice[0] = 10
@@ -63,17 +63,17 @@ func main() {
 	slice = make([]int, 5, 1000)
 	fmt.Printf("slice of %v elements and a capacity for %v\n", len(slice), cap(slice))
 
-	// selected values should be considered read only
-	// changes in the source can be reflected
+	// selected slices are not stable
+	// changes in the source can be seen
 	// unless the source gets reallocated
 	// probably make a copy
 	source := []int{1}
-	selectedValues := source[:]
+	selectedSlice := source[:]
 	source[0] = 2
-	fmt.Printf("selected values %v\n", selectedValues)
+	fmt.Printf("selected slice %v\n", selectedSlice)
 	source = append(source, 0)
 	source[0] = 3
-	fmt.Printf("selected values %v\n", selectedValues)
+	fmt.Printf("selected slice %v\n", selectedSlice)
 
 	// maps are hash tables
 	var nameById = make(map[int]string)
@@ -392,7 +392,7 @@ func laterr() {
 
 // encapsulation
 // members starting with a lower cased letter
-// are only visible from their package
+// are only visible inside their package
 type Cake struct {
 	hugeCaloriesCount int
 }
@@ -422,7 +422,7 @@ func (duck *Duck) Quack(times int) {
 
 func laterrr() {
 
-	// visible from this package
+	// visible inside this package
 	var hugeCake = &Cake{100000}
 	_ = hugeCake.hugeCaloriesCount
 
@@ -441,4 +441,17 @@ func laterrr() {
 	empty = duck
 	_ = empty
 
+	// an interface that is nil
+	var nilInterface Quacker = nil
+	if nilInterface != nil {
+		fmt.Println("will not execute")
+	}
+
+	// an interface to the nil value
+	// never do that
+	var nilDuck *Duck = nil
+	nilInterface = nilDuck
+	if nilInterface != nil {
+		fmt.Println("will execute")
+	}
 }
