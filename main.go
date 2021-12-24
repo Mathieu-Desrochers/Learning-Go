@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 	"unicode/utf8"
 )
 
@@ -83,12 +84,12 @@ func main() {
 	_ = map[int]string{}
 	_ = map[int]string{1: "Alice", 2: "Bob"}
 
-	// setting a value
+	// setting values
 	nameById[100] = "Alice"
 	nameById[200] = "Bob"
 	nameById[300] = "Carl"
 
-	// looking up a value
+	// looking up values
 	if name, ok := nameById[100]; ok {
 		fmt.Printf("name: %v\n", name)
 	}
@@ -99,7 +100,7 @@ func main() {
 		fmt.Printf("id: %v, name: %v\n", id, name)
 	}
 
-	// removing a value
+	// removing values
 	delete(nameById, 300)
 
 	// strings are immutable sequences of bytes
@@ -308,7 +309,7 @@ func later() {
 	// called when the function exits
 	doStuff := func() {
 		fmt.Println("enter")
-		defer fmt.Println("deferred")
+		defer fmt.Println("executed")
 		{
 			defer fmt.Println("not when a block exits")
 		}
@@ -356,7 +357,7 @@ func laterr() {
 	animal := &Animal{4}
 	fmt.Println(animal.CanQuack())
 
-	// struct composition
+	// structure composition
 	type Dog struct {
 		Animal
 		GoodBoyName string
@@ -374,7 +375,7 @@ func laterr() {
 	animalFunction(fido.Animal)
 	//animalFunction(fido)
 
-	// struct composition works with pointer types too
+	// structure composition works with pointer types too
 	type Cat struct {
 		*Animal
 		BadBoyName string
@@ -431,7 +432,7 @@ func laterrr() {
 	var hugeCake = &Cake{100000}
 	_ = hugeCake.hugeCaloriesCount
 
-	// any structure with a Quack method can be passed
+	// any type with a Quack method can be passed
 	doTheQuacking := func(quacker Quacker, times int) {
 		quacker.Quack(times)
 	}
@@ -477,8 +478,7 @@ func (x CookieSlice) Len() int           { return len(x) }
 func (x CookieSlice) Less(i, j int) bool { return x[i].Size < x[j].Size }
 func (x CookieSlice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
-// the sorted type does not need to be a slice
-// here is one nice composition trick
+// some nice composition trick
 type CookieSorter struct {
 	cookies CookieSlice
 	less    func(i, j *Cookie) bool
@@ -490,11 +490,61 @@ func (x *CookieSorter) Swap(i, j int)      { x.cookies[i], x.cookies[j] = x.cook
 
 func laterrrr() {
 
-	// sort those cookies
+	// sort them cookies
 	cookies := CookieSlice{{10, "Chocolate", 5}, {12, "Peanuts", 4}, {8, "Almonds", 3}}
 	sort.Sort(cookies)
 
 	sort.Sort(&CookieSorter{cookies, func(i, j *Cookie) bool {
 		return i.Rating < j.Rating
 	}})
+
+	// type assertions
+	var quacker Quacker = &Duck{}
+	if _, ok := quacker.(*Duck); ok {
+		fmt.Println("is duck")
+	}
+
+	// assignment to a single value
+	// will panic if the assertion fails
+	_ = quacker.(*Duck)
+
+	// type switches
+	switch x := quacker.(type) {
+	case *Duck:
+		fmt.Printf("%v is duck\n", x)
+		break
+	default:
+		fmt.Printf("%v is definitly no duck\n", x)
+		break
+	}
+
+	takeNap := func() {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// concurrent napping
+	go takeNap()
+	go takeNap()
+	go takeNap()
+
+	// message passing through channels
+	channel := make(chan int)
+
+	// the producer is blocked until the message is consumed
+	producer := func(value int) {
+		time.Sleep(100 * time.Millisecond)
+		fmt.Printf("produced value %v\n", value)
+		channel <- value
+	}
+
+	// the consumer is blocked until a message is produced
+	consumer := func() {
+		value := <-channel
+		fmt.Printf("consumed value %v\n", value)
+	}
+
+	go producer(123)
+	go consumer()
+
+	time.Sleep(1 * time.Second)
 }
