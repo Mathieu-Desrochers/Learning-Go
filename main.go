@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"sort"
 	"unicode/utf8"
 )
 
@@ -180,6 +181,10 @@ func main() {
 
 	// anonymous structure literals
 	_ = struct{ X, Y, Z int }{X: 1, Y: 2, Z: 3}
+
+	// named types
+	type ShoeSize int
+	var _ ShoeSize = ShoeSize(14)
 
 	// something like an enum
 	type Flavor int32
@@ -447,11 +452,49 @@ func laterrr() {
 		fmt.Println("will not execute")
 	}
 
-	// an interface to the nil value
+	// an interface that points to nil
 	// never do that
 	var nilDuck *Duck = nil
 	nilInterface = nilDuck
 	if nilInterface != nil {
 		fmt.Println("will execute")
 	}
+
+	laterrrr()
+}
+
+type Cookie struct {
+	Size    int
+	Flavour string
+	Rating  int
+}
+
+// any type with these three
+// methods can be sorted
+type CookieSlice []*Cookie
+
+func (x CookieSlice) Len() int           { return len(x) }
+func (x CookieSlice) Less(i, j int) bool { return x[i].Size < x[j].Size }
+func (x CookieSlice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+
+// the sorted type does not need to be a slice
+// here is one nice composition trick
+type CookieSorter struct {
+	cookies CookieSlice
+	less    func(i, j *Cookie) bool
+}
+
+func (x *CookieSorter) Len() int           { return len(x.cookies) }
+func (x *CookieSorter) Less(i, j int) bool { return x.less(x.cookies[i], x.cookies[j]) }
+func (x *CookieSorter) Swap(i, j int)      { x.cookies[i], x.cookies[j] = x.cookies[j], x.cookies[i] }
+
+func laterrrr() {
+
+	// sort those cookies
+	cookies := CookieSlice{{10, "Chocolate", 5}, {12, "Peanuts", 4}, {8, "Almonds", 3}}
+	sort.Sort(cookies)
+
+	sort.Sort(&CookieSorter{cookies, func(i, j *Cookie) bool {
+		return i.Rating < j.Rating
+	}})
 }
