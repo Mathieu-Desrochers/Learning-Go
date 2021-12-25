@@ -470,33 +470,40 @@ type Cookie struct {
 	Rating  int
 }
 
-// any type with these three
-// methods can be sorted
 type CookieSlice []*Cookie
 
-func (x CookieSlice) Len() int           { return len(x) }
-func (x CookieSlice) Less(i, j int) bool { return x[i].Size < x[j].Size }
-func (x CookieSlice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+// any type with these
+// methods can be sorted
+type CookieBySizeSlice []*Cookie
 
-// some nice composition trick
-type CookieSorter struct {
-	cookies CookieSlice
-	less    func(i, j *Cookie) bool
+func (x CookieBySizeSlice) Len() int           { return len(x) }
+func (x CookieBySizeSlice) Less(i, j int) bool { return x[i].Size < x[j].Size }
+func (x CookieBySizeSlice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+
+// assembling an interface
+// from anonymous functions
+type SorterFunc struct {
+	len  func() int
+	less func(i, j int) bool
+	swap func(i, j int)
 }
 
-func (x *CookieSorter) Len() int           { return len(x.cookies) }
-func (x *CookieSorter) Less(i, j int) bool { return x.less(x.cookies[i], x.cookies[j]) }
-func (x *CookieSorter) Swap(i, j int)      { x.cookies[i], x.cookies[j] = x.cookies[j], x.cookies[i] }
+func (x *SorterFunc) Len() int           { return x.len() }
+func (x *SorterFunc) Less(i, j int) bool { return x.less(i, j) }
+func (x *SorterFunc) Swap(i, j int)      { x.swap(i, j) }
 
 func laterrrr() {
 
 	// sort them cookies
 	cookies := CookieSlice{{10, "Chocolate", 5}, {12, "Peanuts", 4}, {8, "Almonds", 3}}
-	sort.Sort(cookies)
+	sort.Sort(CookieBySizeSlice(cookies))
 
-	sort.Sort(&CookieSorter{cookies, func(i, j *Cookie) bool {
-		return i.Rating < j.Rating
-	}})
+	// sort any slice by any order
+	sort.Sort(&SorterFunc{
+		func() int { return len(cookies) },
+		func(i, j int) bool { return cookies[i].Rating < cookies[j].Rating },
+		func(i, j int) { cookies[i], cookies[j] = cookies[j], cookies[i] },
+	})
 
 	// type assertions
 	var quacker Quacker = &Duck{}
@@ -505,7 +512,7 @@ func laterrrr() {
 	}
 
 	// assignment to a single value
-	// will panic if the assertion fails
+	// causes a panic if the assertion fails
 	_ = quacker.(*Duck)
 
 	// type switches
@@ -522,29 +529,104 @@ func laterrrr() {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	// concurrent napping
+	// functions invoked with
+	// go are executed concurrently
 	go takeNap()
 	go takeNap()
 	go takeNap()
 
-	// message passing through channels
-	channel := make(chan int)
+	// goroutines communicate by
+	// exchanging messages over channels
+	channel := make(chan int, 3)
 
-	// the producer is blocked until the message is consumed
-	producer := func(value int) {
-		time.Sleep(100 * time.Millisecond)
-		fmt.Printf("produced value %v\n", value)
-		channel <- value
+	producer := func() {
+		fmt.Println("sending value 1")
+		channel <- 1
 	}
 
-	// the consumer is blocked until a message is produced
+	// the receive operation is blocking
 	consumer := func() {
 		value := <-channel
-		fmt.Printf("consumed value %v\n", value)
+		fmt.Printf("received value %v\n", value)
 	}
 
-	go producer(123)
+	go producer()
 	go consumer()
-
 	time.Sleep(1 * time.Second)
+
+	// the producer can signal it is done
+	// by closing the channel
+	producer = func() {
+		fmt.Println("closing channel")
+		close(channel)
+	}
+
+	consumer = func() {
+		if _, ok := <-channel; !ok {
+			fmt.Println("channel was closed")
+		}
+	}
+
+	go producer()
+	go consumer()
+	time.Sleep(1 * time.Second)
+
+	// a buffer size is defined
+	// when the channel is created
+	channel = make(chan int, 3)
+
+	// if the buffer gets filled
+	// back pressure is applied on the producer
+	// by making the send operation blocking
+	producer = func() {
+		for i := 0; i < 10; i++ {
+			start := time.Now()
+			channel <- i
+			fmt.Printf("waited %v sending value %v\n", time.Since(start), i)
+		}
+		close(channel)
+	}
+
+	// this loop construct automatically
+	// breaks when the channel gets closed
+	consumer = func() {
+		for value := range channel {
+			time.Sleep(100 * time.Millisecond)
+			fmt.Printf("consumed value %v\n", value)
+		}
+		fmt.Println("channel was closed")
+	}
+
+	go producer()
+	go consumer()
+	time.Sleep(2 * time.Second)
+
+	// channels with a buffer size of zero
+	// synchronize the send and the receive operations
+	channel = make(chan int)
+
+	producer = func() {
+		fmt.Println("doing producer stuff...")
+		time.Sleep(100 * time.Millisecond)
+		fmt.Println("synchronizing")
+		channel <- 1
+		fmt.Println("doing more producer stuff...")
+	}
+
+	consumer = func() {
+		fmt.Println("doing consumer stuff...")
+		time.Sleep(200 * time.Millisecond)
+		fmt.Println("synchronizing")
+		_ = <-channel
+		fmt.Println("doing more consumer stuff...")
+	}
+
+	go producer()
+	go consumer()
+	time.Sleep(1 * time.Second)
+
+	// channel types can be used to
+	// enforce the message directions
+	var _ chan<- int = channel
+	var _ <-chan int = channel
 }
