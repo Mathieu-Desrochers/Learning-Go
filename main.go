@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -243,19 +242,6 @@ func errorWithContext(color string) error {
 	return nil
 }
 
-// declared errors
-var outOfPaint = errors.New("out of paint")
-
-func ooopsAgain() error {
-	return outOfPaint
-}
-func errorDeclared() {
-	err := ooopsAgain()
-	if err == outOfPaint {
-		fmt.Println(err)
-	}
-}
-
 // functions as values
 func addNumbers(x, y int) int {
 	return x + y
@@ -268,10 +254,6 @@ func later() {
 	_ = oneReturn()
 	_, _ = multipleReturns()
 	_, _ = bareReturns()
-
-	// errors
-	errorWithContext("red")
-	errorDeclared()
 
 	// functions as values
 	var functionAsValue func(int, int) int = addNumbers
@@ -341,12 +323,12 @@ type Animal struct {
 }
 
 // methods are attached to a receiver type
-func (a Animal) CanQuack() bool {
+func (a *Animal) CanQuack() bool {
 	return false
 }
 
-// the receiver is passed by value
-// methods are primarily used with pointers
+// receivers are primarily pointers
+// to allow state mutations
 func (a *Animal) GrowLeg() {
 	a.LegsCount++
 }
@@ -359,29 +341,21 @@ func laterr() {
 
 	// structure composition
 	type Dog struct {
-		Animal
+		*Animal
 		GoodBoyName string
 	}
 
 	// members promotion
-	// proxies are injected to delegate the calls
-	fido := &Dog{Animal{4}, "Fido"}
+	// shortcuts are injected for the composed members
+	fido := &Dog{&Animal{4}, "Fido"}
 	fmt.Printf("fido legs count: %v\n", fido.Animal.LegsCount)
 	fmt.Printf("fido legs count: %v\n", fido.LegsCount)
 
 	// this is not inheritance
 	// the second call would not compile
-	animalFunction := func(_ Animal) {}
+	animalFunction := func(_ *Animal) {}
 	animalFunction(fido.Animal)
 	//animalFunction(fido)
-
-	// structure composition works with pointer types too
-	type Cat struct {
-		*Animal
-		BadBoyName string
-	}
-	tiger := &Cat{&Animal{4}, "Tiger"}
-	tiger.GrowLeg()
 
 	// method expressions are functions
 	// with the receiver as first parameter
