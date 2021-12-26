@@ -163,12 +163,6 @@ func main() {
 	fmt.Printf("employee first name: %v\n", employeePointer.FirstName)
 
 	// structures are passed by value
-	originalEmployee := Employee{FirstName: "A"}
-	copiedEmployee := originalEmployee
-	originalEmployee.FirstName = "X"
-	fmt.Printf("originalEmployee: %v\n", originalEmployee)
-	fmt.Printf("copiedEmployee: %v\n", copiedEmployee)
-
 	// but are primarily used with pointers
 	type Team struct {
 		Manager   *Employee
@@ -339,30 +333,31 @@ func laterr() {
 	animal := &Animal{4}
 	fmt.Println(animal.CanQuack())
 
-	// structure composition
+	// structure embedding
 	type Dog struct {
-		*Animal
+		Animal
 		GoodBoyName string
 	}
 
-	// members promotion
-	// shortcuts are injected for the composed members
-	fido := &Dog{&Animal{4}, "Fido"}
-	fmt.Printf("fido legs count: %v\n", fido.Animal.LegsCount)
-	fmt.Printf("fido legs count: %v\n", fido.LegsCount)
+	// the structure gains all
+	// the members of the embedded one
+	fido := &Dog{Animal{4}, "Fido"}
+	fmt.Printf("legs count: %v\n", fido.LegsCount)
+	fmt.Printf("good boy name: %v\n", fido.GoodBoyName)
 
-	// this is not inheritance
-	// the second call would not compile
-	animalFunction := func(_ *Animal) {}
-	animalFunction(fido.Animal)
-	//animalFunction(fido)
+	// including its attached methods
+	fido.GrowLeg()
 
-	// method expressions are functions
-	// with the receiver as first parameter
+	// the embedded structure
+	// can be accessed explicitly
+	var _ *Animal = &fido.Animal
+
+	// converting from method to a function
+	// taking the receiver as first parameter
 	methodExpression := (*Animal).GrowLeg
 	methodExpression(animal)
 
-	// method values are functions
+	// converting from method to a function
 	// with the receiver already bound
 	methodValue := animal.GrowLeg
 	methodValue()
@@ -456,15 +451,15 @@ func (x CookieBySizeSlice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
 // assembling an interface
 // from anonymous functions
-type SorterFunc struct {
+type FuncSorter struct {
 	len  func() int
 	less func(i, j int) bool
 	swap func(i, j int)
 }
 
-func (x *SorterFunc) Len() int           { return x.len() }
-func (x *SorterFunc) Less(i, j int) bool { return x.less(i, j) }
-func (x *SorterFunc) Swap(i, j int)      { x.swap(i, j) }
+func (x *FuncSorter) Len() int           { return x.len() }
+func (x *FuncSorter) Less(i, j int) bool { return x.less(i, j) }
+func (x *FuncSorter) Swap(i, j int)      { x.swap(i, j) }
 
 func laterrrr() {
 
@@ -473,7 +468,7 @@ func laterrrr() {
 	sort.Sort(CookieBySizeSlice(cookies))
 
 	// sort any slice by any order
-	sort.Sort(&SorterFunc{
+	sort.Sort(&FuncSorter{
 		func() int { return len(cookies) },
 		func(i, j int) bool { return cookies[i].Rating < cookies[j].Rating },
 		func(i, j int) { cookies[i], cookies[j] = cookies[j], cookies[i] },
@@ -485,8 +480,8 @@ func laterrrr() {
 		fmt.Println("is duck")
 	}
 
-	// assignment to a single value
-	// causes a panic if the assertion fails
+	// when assigning to a single value
+	// panics if the assertion fails
 	_ = quacker.(*Duck)
 
 	// type switches
@@ -576,31 +571,61 @@ func laterrrr() {
 	time.Sleep(2 * time.Second)
 
 	// channels with a buffer size of zero
-	// synchronize the send and the receive operations
-	channel = make(chan int)
+	// block the send and received operations
+	// until a message is exchanged
+	synchronizationChannel := make(chan int)
 
-	producer = func() {
-		fmt.Println("doing producer stuff...")
+	worker1 := func() {
+		fmt.Println("worker1 stuff...")
 		time.Sleep(100 * time.Millisecond)
 		fmt.Println("synchronizing")
-		channel <- 1
-		fmt.Println("doing more producer stuff...")
+		synchronizationChannel <- 1
+		fmt.Println("more worker1 stuff...")
 	}
 
-	consumer = func() {
-		fmt.Println("doing consumer stuff...")
+	worker2 := func() {
+		fmt.Println("worker2 stuff...")
 		time.Sleep(200 * time.Millisecond)
 		fmt.Println("synchronizing")
-		_ = <-channel
-		fmt.Println("doing more consumer stuff...")
+		_ = <-synchronizationChannel
+		fmt.Println("more worker2 stuff...")
 	}
 
-	go producer()
-	go consumer()
+	go worker1()
+	go worker2()
 	time.Sleep(1 * time.Second)
 
 	// channel types can be used to
 	// enforce the message directions
 	var _ chan<- int = channel
 	var _ <-chan int = channel
+
+	// looping concurrently
+	workItems := []int{1, 2, 3, 4, 5, 6, 8}
+
+	for _, workItem := range workItems {
+		go func(capturedWorkItem int) {
+			fmt.Printf("work item %v done\n", capturedWorkItem)
+		}(workItem)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	// with results accumulation
+	results := make(chan int, len(workItems))
+
+	for _, workItem := range workItems {
+		go func(capturedWorkItem int) {
+			fmt.Printf("work item %v done\n", capturedWorkItem)
+			results <- capturedWorkItem
+		}(workItem)
+	}
+
+	accumulation := 0
+	for range workItems {
+		accumulation += <-results
+	}
+	fmt.Printf("accumulation %v\n", accumulation)
+
+	time.Sleep(1 * time.Second)
 }
