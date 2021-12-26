@@ -570,6 +570,28 @@ func laterrrr() {
 	go consumer()
 	time.Sleep(2 * time.Second)
 
+	channel = make(chan int, 3)
+
+	// multiple consumers can
+	// receive from the same channel
+	producer = func() {
+		for i := 0; i < 10; i++ {
+			channel <- i
+		}
+		close(channel)
+	}
+
+	indexedConsumer := func(index int) {
+		for value := range channel {
+			fmt.Printf("consumed value %v on index %v\n", value, index)
+		}
+	}
+
+	go producer()
+	go indexedConsumer(1)
+	go indexedConsumer(2)
+	time.Sleep(1 * time.Second)
+
 	// channels with a buffer size of zero
 	// block the send and received operations
 	// until a message is exchanged
@@ -601,7 +623,7 @@ func laterrrr() {
 	var _ <-chan int = channel
 
 	// looping concurrently
-	workItems := []int{1, 2, 3, 4, 5, 6, 8}
+	workItems := []int{1, 2, 3, 4, 5, 6, 7, 8}
 
 	for _, workItem := range workItems {
 		go func(capturedWorkItem int) {
@@ -611,9 +633,10 @@ func laterrrr() {
 
 	time.Sleep(1 * time.Second)
 
-	// with results accumulation
+	// accumulating results
 	results := make(chan int, len(workItems))
 
+	// each worker sends its own result
 	for _, workItem := range workItems {
 		go func(capturedWorkItem int) {
 			fmt.Printf("work item %v done\n", capturedWorkItem)
@@ -621,11 +644,24 @@ func laterrrr() {
 		}(workItem)
 	}
 
+	// receive all the results
 	accumulation := 0
 	for range workItems {
 		accumulation += <-results
 	}
 	fmt.Printf("accumulation %v\n", accumulation)
 
-	time.Sleep(1 * time.Second)
+	// limiting loops concurrency
+	maximumConcurrency := make(chan int, 2)
+
+	for _, workItem := range workItems {
+		maximumConcurrency <- 1
+		go func(capturedWorkItem int) {
+			time.Sleep(500 * time.Millisecond)
+			fmt.Printf("work item %v done\n", capturedWorkItem)
+			<-maximumConcurrency
+		}(workItem)
+	}
+
+	time.Sleep(5 * time.Second)
 }
