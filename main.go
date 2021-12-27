@@ -566,51 +566,31 @@ func laterrrr() {
 		fmt.Println("channel was closed")
 	}
 
+	// multiple producers and consumers can safely
+	// send and receive from the same channel
 	go producer()
 	go consumer()
 	time.Sleep(2 * time.Second)
 
-	channel = make(chan int, 3)
-
-	// multiple consumers can
-	// receive from the same channel
-	producer = func() {
-		for i := 0; i < 10; i++ {
-			channel <- i
-		}
-		close(channel)
-	}
-
-	indexedConsumer := func(index int) {
-		for value := range channel {
-			fmt.Printf("consumed value %v on index %v\n", value, index)
-		}
-	}
-
-	go producer()
-	go indexedConsumer(1)
-	go indexedConsumer(2)
-	time.Sleep(1 * time.Second)
-
 	// channels with a buffer size of zero
-	// block the send and received operations
+	// block the sender and the receiver
 	// until a message is exchanged
 	synchronizationChannel := make(chan int)
 
 	worker1 := func() {
-		fmt.Println("worker1 stuff...")
+		fmt.Println("worker 1 step A...")
 		time.Sleep(100 * time.Millisecond)
-		fmt.Println("synchronizing")
+		fmt.Println("waiting for both steps A to be done")
 		synchronizationChannel <- 1
-		fmt.Println("more worker1 stuff...")
+		fmt.Println("worker 1 step B...")
 	}
 
 	worker2 := func() {
-		fmt.Println("worker2 stuff...")
+		fmt.Println("worker 2 step A...")
 		time.Sleep(200 * time.Millisecond)
-		fmt.Println("synchronizing")
+		fmt.Println("waiting for both steps A to be done")
 		_ = <-synchronizationChannel
-		fmt.Println("more worker2 stuff...")
+		fmt.Println("worker 2 step B...")
 	}
 
 	go worker1()
@@ -663,5 +643,62 @@ func laterrrr() {
 		}(workItem)
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(1 * time.Second)
+
+	// reading from multiple channels
+	socket1 := make(chan []byte, 3)
+	socket2 := make(chan []byte, 3)
+
+	producer = func() {
+		socket2 <- []byte("Hello")
+	}
+
+	// select blocks until one of
+	// the channels receives a message
+	consumer = func() {
+		select {
+		case bytes := <-socket1:
+			fmt.Printf("received %v on socket1\n", bytes)
+			break
+		case bytes := <-socket2:
+			fmt.Printf("received %v on socket2\n", bytes)
+			break
+		}
+	}
+
+	go producer()
+	go consumer()
+	time.Sleep(1 * time.Second)
+
+	// adding a default branch
+	// makes select non blocking
+	consumer = func() {
+		select {
+		case _ = <-socket1:
+			break
+		default:
+			fmt.Println("received nothing yet")
+			break
+		}
+	}
+
+	go consumer()
+	time.Sleep(1 * time.Second)
+
+	// closing a channel triggers
+	// its branch with ok set to false
+	consumer = func() {
+		select {
+		case _, ok := <-socket1:
+			if !ok {
+				fmt.Println("socket1 was closed")
+			}
+			break
+		}
+	}
+
+	go consumer()
+	close(socket1)
+	close(socket2)
+	time.Sleep(1 * time.Second)
 }
