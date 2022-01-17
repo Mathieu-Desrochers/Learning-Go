@@ -506,199 +506,142 @@ func laterrrr() {
 
 	// goroutines communicate by
 	// exchanging messages over channels
-	channel := make(chan int, 3)
+	channel := make(chan int)
 
-	producer := func() {
+	// both the sender and the receiver are blocked
+	// until a message is exchanged
+	sender := func() {
 		fmt.Println("sending value 1")
 		channel <- 1
 	}
 
-	// the receive operation is blocking
-	consumer := func() {
+	receiver := func() {
 		value := <-channel
 		fmt.Printf("received value %v\n", value)
 	}
 
-	go producer()
-	go consumer()
+	go sender()
+	go receiver()
 	time.Sleep(1 * time.Second)
 
-	// the producer can signal it is done
-	// by closing the channel
-	producer = func() {
+	// a channel can be closed to signal
+	// no more messages will be sent
+	sender = func() {
 		fmt.Println("closing channel")
 		close(channel)
 	}
 
-	consumer = func() {
+	receiver = func() {
 		if _, ok := <-channel; !ok {
 			fmt.Println("channel was closed")
 		}
 	}
 
-	go producer()
-	go consumer()
+	go sender()
+	go receiver()
 	time.Sleep(1 * time.Second)
+	channel = make(chan int)
 
-	// a buffer size is defined
-	// when the channel is created
-	channel = make(chan int, 3)
-
-	// if the buffer gets filled
-	// back pressure is applied on the producer
-	// by making the send operation blocking
-	producer = func() {
-		for i := 0; i < 10; i++ {
-			start := time.Now()
+	// exchanging a sequence of messages
+	// the range automatically breaks
+	// when the channel closes
+	sender = func() {
+		for i := 0; i < 5; i++ {
+			fmt.Printf("sending value %v\n", i)
 			channel <- i
-			fmt.Printf("waited %v sending value %v\n", time.Since(start), i)
 		}
 		close(channel)
 	}
 
-	// this loop construct automatically
-	// breaks when the channel gets closed
-	consumer = func() {
+	receiver = func() {
 		for value := range channel {
-			time.Sleep(100 * time.Millisecond)
-			fmt.Printf("consumed value %v\n", value)
+			fmt.Printf("received value %v\n", value)
 		}
 		fmt.Println("channel was closed")
 	}
 
-	// multiple producers and consumers can safely
-	// send and receive from the same channel
-	go producer()
-	go consumer()
-	time.Sleep(2 * time.Second)
-
-	// channels with a buffer size of zero
-	// block the sender and the receiver
-	// until a message is exchanged
-	synchronizationChannel := make(chan int)
-
-	worker1 := func() {
-		fmt.Println("worker 1 step A...")
-		time.Sleep(100 * time.Millisecond)
-		fmt.Println("waiting for both steps A to be done")
-		synchronizationChannel <- 1
-		fmt.Println("worker 1 step B...")
-	}
-
-	worker2 := func() {
-		fmt.Println("worker 2 step A...")
-		time.Sleep(200 * time.Millisecond)
-		fmt.Println("waiting for both steps A to be done")
-		_ = <-synchronizationChannel
-		fmt.Println("worker 2 step B...")
-	}
-
-	go worker1()
-	go worker2()
+	go sender()
+	go receiver()
 	time.Sleep(1 * time.Second)
+	channel = make(chan int)
+
+	// looping concurrently
+	// and receiving the results
+	workItems := []int{1, 2, 3, 4}
+
+	for _, workItem := range workItems {
+		go func(capturedWorkItem int) {
+			fmt.Printf("sending result %v\n", capturedWorkItem)
+			channel <- capturedWorkItem
+		}(workItem)
+	}
+
+	for range workItems {
+		result := <-channel
+		fmt.Printf("received result %v\n", result)
+	}
+
+	close(channel)
+
+	// a buffer size can be set on the channel
+	// the sender blocks only when the buffer is full
+	channel = make(chan int, 2)
+
+	// can be used as reserved
+	// slots to limit concurrency
+	for _, workItem := range workItems {
+		channel <- 1
+		go func(capturedWorkItem int) {
+			<-channel
+		}(workItem)
+	}
+
+	time.Sleep(1 * time.Second)
+	close(channel)
+
+	// selecting from multiple channels
+	// blocks until one of them receives a message
+	channel1 := make(chan int)
+	channel2 := make(chan int)
+
+	sender = func() {
+		channel2 <- 1
+	}
+
+	receiver = func() {
+		select {
+		case value := <-channel1:
+			fmt.Printf("received %v on channel1\n", value)
+			break
+		case value := <-channel2:
+			fmt.Printf("received %v on channel2\n", value)
+			break
+		}
+	}
+
+	go sender()
+	go receiver()
+	time.Sleep(1 * time.Second)
+
+	// adding a default branch
+	// makes select non blocking
+	receiver = func() {
+		select {
+		case _ = <-channel1:
+			break
+		default:
+			fmt.Println("received nothing")
+			break
+		}
+	}
+
+	go receiver()
+	time.Sleep(1 * time.Second)
+	close(channel1)
+	close(channel2)
 
 	// channel types can be used to
 	// enforce the message directions
 	var _ chan<- int = channel
 	var _ <-chan int = channel
-
-	// looping concurrently
-	workItems := []int{1, 2, 3, 4, 5, 6, 7, 8}
-
-	for _, workItem := range workItems {
-		go func(capturedWorkItem int) {
-			fmt.Printf("work item %v done\n", capturedWorkItem)
-		}(workItem)
-	}
-
-	time.Sleep(1 * time.Second)
-
-	// accumulating results
-	results := make(chan int, len(workItems))
-
-	// each worker sends its own result
-	for _, workItem := range workItems {
-		go func(capturedWorkItem int) {
-			fmt.Printf("work item %v done\n", capturedWorkItem)
-			results <- capturedWorkItem
-		}(workItem)
-	}
-
-	// receive all the results
-	accumulation := 0
-	for range workItems {
-		accumulation += <-results
-	}
-	fmt.Printf("accumulation %v\n", accumulation)
-
-	// limiting loops concurrency
-	maximumConcurrency := make(chan int, 2)
-
-	for _, workItem := range workItems {
-		maximumConcurrency <- 1
-		go func(capturedWorkItem int) {
-			time.Sleep(500 * time.Millisecond)
-			fmt.Printf("work item %v done\n", capturedWorkItem)
-			<-maximumConcurrency
-		}(workItem)
-	}
-
-	time.Sleep(1 * time.Second)
-
-	// reading from multiple channels
-	socket1 := make(chan []byte, 3)
-	socket2 := make(chan []byte, 3)
-
-	producer = func() {
-		socket2 <- []byte("Hello")
-	}
-
-	// select blocks until one of
-	// the channels receives a message
-	consumer = func() {
-		select {
-		case bytes := <-socket1:
-			fmt.Printf("received %v on socket1\n", bytes)
-			break
-		case bytes := <-socket2:
-			fmt.Printf("received %v on socket2\n", bytes)
-			break
-		}
-	}
-
-	go producer()
-	go consumer()
-	time.Sleep(1 * time.Second)
-
-	// adding a default branch
-	// makes select non blocking
-	consumer = func() {
-		select {
-		case _ = <-socket1:
-			break
-		default:
-			fmt.Println("received nothing yet")
-			break
-		}
-	}
-
-	go consumer()
-	time.Sleep(1 * time.Second)
-
-	// closing a channel triggers
-	// its branch with ok set to false
-	consumer = func() {
-		select {
-		case _, ok := <-socket1:
-			if !ok {
-				fmt.Println("socket1 was closed")
-			}
-			break
-		}
-	}
-
-	go consumer()
-	close(socket1)
-	close(socket2)
-	time.Sleep(1 * time.Second)
 }
