@@ -670,36 +670,40 @@ func laterrrr() {
 	// a read-write mutex allows
 	// one writer or multiple readers
 	var readWriteMutex sync.RWMutex
+	coins := 0
 
-	deposit = func(amount int) {
+	moreCoins := func(count int) {
 		readWriteMutex.Lock()
 		defer readWriteMutex.Unlock()
-		balance += amount
+		coins += count
 	}
 
-	getBalance := func() {
+	howManyCoins := func() {
 		readWriteMutex.RLock()
 		defer readWriteMutex.RUnlock()
-		fmt.Printf("balance %v\n", balance)
+		fmt.Printf("that many coins %v\n", coins)
 	}
 
-	go deposit(15)
-	go getBalance()
-	go getBalance()
+	go moreCoins(15)
+	go howManyCoins()
+	go howManyCoins()
 	time.Sleep(1 * time.Second)
 
 	// a read-write mutex
 	// for the lazy initialization
 	// of a read-only state is provided
+	var onceMutex sync.Once
 	var stuff int
-	var lazyInitMutex sync.Once
 
 	printStuff := func() {
-		lazyInitMutex.Do(func() { stuff = 10 })
+		onceMutex.Do(func() { stuff = 10 })
 		fmt.Printf("stuff %v\n", stuff)
 	}
 
 	go printStuff()
 	go printStuff()
 	time.Sleep(1 * time.Second)
+
+	// a race detector can be activated
+	// with go run -race
 }
