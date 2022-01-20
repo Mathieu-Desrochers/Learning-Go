@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 	"unicode/utf8"
 )
@@ -480,10 +481,6 @@ func laterrrr() {
 		fmt.Println("is duck")
 	}
 
-	// when assigning to a single value
-	// panics if the assertion fails
-	_ = quacker.(*Duck)
-
 	// type switches
 	switch x := quacker.(type) {
 	case *Duck:
@@ -542,7 +539,7 @@ func laterrrr() {
 	time.Sleep(1 * time.Second)
 	channel = make(chan int)
 
-	// exchanging a sequence of messages
+	// loop of messages
 	// the range automatically breaks
 	// when the channel closes
 	sender = func() {
@@ -582,22 +579,27 @@ func laterrrr() {
 	}
 
 	close(channel)
+	channel = make(chan int)
 
-	// a buffer size can be set on the channel
-	// the sender blocks only when the buffer is full
-	channel = make(chan int, 2)
-
-	// can be used as reserved
-	// slots to limit concurrency
-	for _, workItem := range workItems {
-		channel <- 1
-		go func(capturedWorkItem int) {
-			<-channel
-		}(workItem)
+	// controlling concurrency
+	// with a fixed number of receivers
+	sender = func() {
+		for i := 0; i < 5; i++ {
+			channel <- i
+		}
+		close(channel)
 	}
 
+	indexedReceiver := func(index int) {
+		for value := range channel {
+			fmt.Printf("%v received value %v\n", index, value)
+		}
+	}
+
+	go sender()
+	go indexedReceiver(1)
+	go indexedReceiver(2)
 	time.Sleep(1 * time.Second)
-	close(channel)
 
 	// selecting from multiple channels
 	// blocks until one of them receives a message
@@ -644,4 +646,60 @@ func laterrrr() {
 	// enforce the message directions
 	var _ chan<- int = channel
 	var _ <-chan int = channel
+
+	// a buffer size can be set on the channel
+	// the sender blocks only when the buffer is full
+	channel = make(chan int, 2)
+	close(channel)
+
+	// a mutex allows one goroutine at a time
+	// must be used to protect shared state
+	var balanceMutex sync.Mutex
+	balance := 100
+
+	deposit := func(amount int) {
+		balanceMutex.Lock()
+		defer balanceMutex.Unlock()
+		balance += amount
+	}
+
+	go deposit(15)
+	go deposit(500)
+	time.Sleep(1 * time.Second)
+
+	// a read-write mutex allows
+	// one writer or multiple readers
+	var readWriteMutex sync.RWMutex
+
+	deposit = func(amount int) {
+		readWriteMutex.Lock()
+		defer readWriteMutex.Unlock()
+		balance += amount
+	}
+
+	getBalance := func() {
+		readWriteMutex.RLock()
+		defer readWriteMutex.RUnlock()
+		fmt.Printf("balance %v\n", balance)
+	}
+
+	go deposit(15)
+	go getBalance()
+	go getBalance()
+	time.Sleep(1 * time.Second)
+
+	// a read-write mutex
+	// for the lazy initialization
+	// of a read-only state is provided
+	var stuff int
+	var lazyInitMutex sync.Once
+
+	printStuff := func() {
+		lazyInitMutex.Do(func() { stuff = 10 })
+		fmt.Printf("stuff %v\n", stuff)
+	}
+
+	go printStuff()
+	go printStuff()
+	time.Sleep(1 * time.Second)
 }
