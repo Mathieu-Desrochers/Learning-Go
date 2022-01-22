@@ -3,10 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"math"
 	"sort"
 	"sync"
-	"testing"
 	"time"
 	"unicode/utf8"
 )
@@ -719,50 +717,3 @@ func laterrrr() {
 // Documented does very well documented things indeed.
 func Documented() {
 }
-
-// running tests (must reside in main_test.go)
-// go test
-
-func TestAddition(t *testing.T) {
-	t.Error("2 + 2 != 5")
-}
-
-func TestTableDriven(t *testing.T) {
-	var tests = []struct {
-		input float64
-		want  float64
-	}{
-		{1, 1},
-		{2, 4},
-		{3, 9},
-	}
-	for _, test := range tests {
-		if got := math.Pow(test.input, 2); got != test.want {
-			t.Errorf("math.Sqrt(%v) = %v, want %v", test.input, got, test.want)
-		}
-	}
-}
-
-// mocking using global variables
-var selectCustomer = func(customerId int) string {
-	return fmt.Sprintf("SELECT Name FROM Customers WHERE Id = %v;", customerId)
-}
-
-func GetCustomer(customerId int) string {
-	return "His name is " + selectCustomer(customerId)
-}
-
-func TestGetCustomer(t *testing.T) {
-	selectCustomerReal := selectCustomer
-	defer func() { selectCustomer = selectCustomerReal }()
-
-	selectCustomer = func(customerId int) string { return "Bob" }
-
-	got := GetCustomer(1)
-	fmt.Printf("got %v\n", got)
-}
-
-// computing test coverage
-// and displaying the green/red source
-// go test -coverprofile=cover.out
-// go tool cover -html=cover.out
