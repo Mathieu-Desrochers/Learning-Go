@@ -716,11 +716,15 @@ func laterrrr() {
 // generating documentation
 // godoc -http :8000
 
+// Documented does very well documented things indeed.
+func Documented() {
+}
+
 // running tests (must reside in main_test.go)
 // go test
 
 func TestAddition(t *testing.T) {
-	t.Error("1+1 != 3")
+	t.Error("2 + 2 != 5")
 }
 
 func TestTableDriven(t *testing.T) {
@@ -738,3 +742,27 @@ func TestTableDriven(t *testing.T) {
 		}
 	}
 }
+
+// mocking using global variables
+var selectCustomer = func(customerId int) string {
+	return fmt.Sprintf("SELECT Name FROM Customers WHERE Id = %v;", customerId)
+}
+
+func GetCustomer(customerId int) string {
+	return "His name is " + selectCustomer(customerId)
+}
+
+func TestGetCustomer(t *testing.T) {
+	selectCustomerReal := selectCustomer
+	defer func() { selectCustomer = selectCustomerReal }()
+
+	selectCustomer = func(customerId int) string { return "Bob" }
+
+	got := GetCustomer(1)
+	fmt.Printf("got %v\n", got)
+}
+
+// computing test coverage
+// and displaying the green/red source
+// go test -coverprofile=cover.out
+// go tool cover -html=cover.out
