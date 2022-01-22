@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"sort"
 	"sync"
+	"testing"
 	"time"
 	"unicode/utf8"
 )
@@ -703,7 +705,36 @@ func laterrrr() {
 	go printStuff()
 	go printStuff()
 	time.Sleep(1 * time.Second)
+}
 
-	// a race detector can be activated
-	// with go run -race
+// running a program with the race detector
+// go run -race
+
+// downloading a package
+// go get gopkg.in/gomail.v2
+
+// generating documentation
+// godoc -http :8000
+
+// running tests (must reside in main_test.go)
+// go test
+
+func TestAddition(t *testing.T) {
+	t.Error("1+1 != 3")
+}
+
+func TestTableDriven(t *testing.T) {
+	var tests = []struct {
+		input float64
+		want  float64
+	}{
+		{1, 1},
+		{2, 4},
+		{3, 9},
+	}
+	for _, test := range tests {
+		if got := math.Pow(test.input, 2); got != test.want {
+			t.Errorf("math.Sqrt(%v) = %v, want %v", test.input, got, test.want)
+		}
+	}
 }
