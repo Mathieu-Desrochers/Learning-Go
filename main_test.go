@@ -57,7 +57,6 @@ func TestGetCustomer(t *testing.T) {
 // benchmarking time and memory allocations
 // go test -bench=.
 // go test -bench=. -benchmem
-
 func Lengthy() {
 	for i := 0; i < 10000000; i++ {
 	}

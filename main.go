@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"sort"
 	"sync"
 	"time"
@@ -693,27 +694,41 @@ func laterrrr() {
 	// for the lazy initialization
 	// of a read-only state is provided
 	var onceMutex sync.Once
-	var stuff int
+	var lazyComputation int
 
-	printStuff := func() {
-		onceMutex.Do(func() { stuff = 10 })
-		fmt.Printf("stuff %v\n", stuff)
+	printComputation := func() {
+		onceMutex.Do(func() { lazyComputation = 10 + 2/7 - 16 })
+		fmt.Printf("computation %v\n", lazyComputation)
 	}
 
-	go printStuff()
-	go printStuff()
+	go printComputation()
+	go printComputation()
 	time.Sleep(1 * time.Second)
-}
 
-// running a program with the race detector
-// go run -race
+	// running a program with the race detector
+	// go run -race
 
-// downloading a package
-// go get gopkg.in/gomail.v2
+	// using reflection
+	var somethingA interface{} = 1
+	var somethingB interface{} = struct{ x, y int }{1, 2}
 
-// generating documentation
-// godoc -http :8000
+	// getting something's type
+	typeA := reflect.TypeOf(somethingA)
+	typeB := reflect.TypeOf(somethingB)
 
-// Documented does very well documented things indeed.
-func Documented() {
+	if typeA.Kind() == reflect.Int {
+		fmt.Println("somethingA is an Int")
+	}
+
+	fmt.Printf("somethingB is a %v\n", typeB)
+
+	// getting something's value
+	valueA := reflect.ValueOf(somethingA)
+	valueB := reflect.ValueOf(somethingB)
+
+	fmt.Printf("somethingA is %v\n", valueA.Int())
+
+	for i := 0; i < valueB.NumField(); i++ {
+		fmt.Printf("somethingB.%v is %v\n", valueB.Type().Field(i).Name, valueB.Field(i))
+	}
 }
