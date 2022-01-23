@@ -730,14 +730,25 @@ func laterrrr() {
 		// setting something's value
 		reflect.ValueOf(somethingA).Elem().Set(reflect.ValueOf(2))
 		reflect.ValueOf(somethingB).Elem().FieldByName("X").Set(reflect.ValueOf(10))
+
+		// accessing field tags
+		tag := reflect.ValueOf(somethingB).Elem().Type().Field(0).Tag.Get("color")
+		fmt.Printf("somethingB.X has color %v\n", tag)
 	}
+
+	number := 1
+	structure := struct {
+		X int `color:"red"`
+		Y int `color:"blue"`
+	}{1, 2}
 
 	// setting values must be done through a pointer
 	// always use them for consistency
-	number := 1
-	structure := struct{ X, Y int }{1, 2}
 	reflection(&number, &structure)
 
 	fmt.Printf("number is now %v\n", number)
 	fmt.Printf("structure is now %v\n", structure)
+
+	// calling C code
+	Print("Hello")
 }
