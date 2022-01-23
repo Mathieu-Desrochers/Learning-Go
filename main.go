@@ -284,10 +284,9 @@ func later() {
 	fmt.Println(bigCompute(bigComputeValues...))
 
 	// deferred function calls
-	// called when the function exits
 	doStuff := func() {
 		fmt.Println("enter")
-		defer fmt.Println("executed")
+		defer fmt.Println("executed when the function exits")
 		{
 			defer fmt.Println("not when a block exits")
 		}
