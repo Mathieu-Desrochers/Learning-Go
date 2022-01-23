@@ -679,10 +679,10 @@ func laterrrr() {
 		coins += count
 	}
 
-	howManyCoins := func() {
+	howManyCoins := func() int {
 		readWriteMutex.RLock()
 		defer readWriteMutex.RUnlock()
-		fmt.Printf("that many coins %v\n", coins)
+		return coins
 	}
 
 	go moreCoins(15)
@@ -694,41 +694,50 @@ func laterrrr() {
 	// for the lazy initialization
 	// of a read-only state is provided
 	var onceMutex sync.Once
-	var lazyComputation int
+	var lazyInitializedValue int
 
-	printComputation := func() {
-		onceMutex.Do(func() { lazyComputation = 10 + 2/7 - 16 })
-		fmt.Printf("computation %v\n", lazyComputation)
+	getLazyInitializedValue := func() int {
+		onceMutex.Do(func() { lazyInitializedValue = 10 + 2/7 - 16 })
+		return lazyInitializedValue
 	}
 
-	go printComputation()
-	go printComputation()
+	go getLazyInitializedValue()
+	go getLazyInitializedValue()
 	time.Sleep(1 * time.Second)
 
 	// running a program with the race detector
 	// go run -race
 
 	// using reflection
-	var somethingA interface{} = 1
-	var somethingB interface{} = struct{ x, y int }{1, 2}
+	reflection := func(somethingA, somethingB interface{}) {
 
-	// getting something's type
-	typeA := reflect.TypeOf(somethingA)
-	typeB := reflect.TypeOf(somethingB)
+		// getting something's type
+		typeA := reflect.TypeOf(somethingA).Elem()
+		fmt.Printf("somethingA is a %v\n", typeA.Kind())
 
-	if typeA.Kind() == reflect.Int {
-		fmt.Println("somethingA is an Int")
+		typeB := reflect.TypeOf(somethingB).Elem()
+		fmt.Printf("somethingB is a %v\n", typeB)
+
+		// getting something's value
+		valueA := reflect.ValueOf(somethingA).Elem().Int()
+		fmt.Printf("somethingA is %v\n", valueA)
+
+		valueB := reflect.ValueOf(somethingB).Elem()
+		for i := 0; i < valueB.NumField(); i++ {
+			fmt.Printf("somethingB.%v is %v\n", valueB.Type().Field(i).Name, valueB.Field(i))
+		}
+
+		// setting something's value
+		reflect.ValueOf(somethingA).Elem().Set(reflect.ValueOf(2))
+		reflect.ValueOf(somethingB).Elem().FieldByName("X").Set(reflect.ValueOf(10))
 	}
 
-	fmt.Printf("somethingB is a %v\n", typeB)
+	// setting values must be done through a pointer
+	// always use them for consistency
+	number := 1
+	structure := struct{ X, Y int }{1, 2}
+	reflection(&number, &structure)
 
-	// getting something's value
-	valueA := reflect.ValueOf(somethingA)
-	valueB := reflect.ValueOf(somethingB)
-
-	fmt.Printf("somethingA is %v\n", valueA.Int())
-
-	for i := 0; i < valueB.NumField(); i++ {
-		fmt.Printf("somethingB.%v is %v\n", valueB.Type().Field(i).Name, valueB.Field(i))
-	}
+	fmt.Printf("number is now %v\n", number)
+	fmt.Printf("structure is now %v\n", structure)
 }
